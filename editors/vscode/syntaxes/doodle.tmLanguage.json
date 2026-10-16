@@ -1,0 +1,51 @@
+{
+    "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+    "name": "Doodle",
+    "scopeName": "source.doodle",
+    "patterns": [
+        {
+            "name": "comment.line.double-slash.doodle",
+            "begin": "//",
+            "end": "$"
+        },
+        {
+            "match": "\\b(fn)\\s+([A-Za-z_][A-Za-z0-9_]*)",
+            "captures": {
+                "1": {
+                    "name": "storage.type.function.doodle"
+                },
+                "2": {
+                    "name": "entity.name.function.doodle"
+                }
+            }
+        },
+        {
+            "name": "storage.type.doodle",
+            "match": "\\bint\\b"
+        },
+        {
+            "name": "constant.numeric.integer.doodle",
+            "match": "\\b[0-9]+\\b"
+        },
+        {
+            "name": "entity.name.function.call.doodle",
+            "match": "\\b[A-Za-z_][A-Za-z0-9_]*(?=\\s*\\()"
+        },
+        {
+            "name": "variable.other.definition.doodle",
+            "match": "\\b[A-Za-z_][A-Za-z0-9_]*(?=\\s*(?::\\s*int\\s*)?:=)"
+        },
+        {
+            "name": "variable.parameter.doodle",
+            "match": "\\b[A-Za-z_][A-Za-z0-9_]*(?=\\s*:(?!=))"
+        },
+        {
+            "name": "keyword.operator.doodle",
+            "match": ":=|<=|>=|==|!=|[+*/=<>-]"
+        },
+        {
+            "name": "punctuation.separator.doodle",
+            "match": "[,;:]"
+        }
+    ]
+}

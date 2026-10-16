@@ -2,6 +2,7 @@
 
 #include "lexer.hpp"
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -27,9 +28,34 @@ struct Parameter : public AST
 
 struct Block : public AST
 {
+    std::vector<std::unique_ptr<AST>> statements;
     std::unique_ptr<AST> expression;
 
-    explicit Block(std::unique_ptr<AST> expr);
+    Block(std::vector<std::unique_ptr<AST>> stmts, std::unique_ptr<AST> expr);
+};
+
+struct VariableDeclaration : public AST
+{
+    std::string name;
+    std::optional<std::string> declared_type;
+    std::unique_ptr<AST> initializer;
+
+    VariableDeclaration(std::string n, std::optional<std::string> type, std::unique_ptr<AST> init);
+};
+
+struct Assignment : public AST
+{
+    std::string name;
+    std::unique_ptr<AST> value;
+
+    Assignment(std::string n, std::unique_ptr<AST> expr);
+};
+
+struct ExpressionStatement : public AST
+{
+    std::unique_ptr<AST> expression;
+
+    explicit ExpressionStatement(std::unique_ptr<AST> expr);
 };
 
 struct FunctionVariant : public AST
@@ -55,6 +81,13 @@ struct IntegerLiteral : public AST
     int value;
 
     explicit IntegerLiteral(int val);
+};
+
+struct BooleanLiteral : public AST
+{
+    bool value;
+
+    explicit BooleanLiteral(bool val);
 };
 
 struct Identifier : public AST
@@ -127,7 +160,17 @@ private:
 
     std::unique_ptr<Parameter> parse_parameter();
 
+    std::string parse_type();
+
     std::unique_ptr<Block> parse_block();
+
+    std::unique_ptr<VariableDeclaration> parse_variable_declaration();
+
+    std::unique_ptr<Assignment> parse_assignment();
+
+    std::unique_ptr<AST> parse_equality();
+    
+    std::unique_ptr<AST> parse_comparison();
 
     std::unique_ptr<AST> parse_expression();
 

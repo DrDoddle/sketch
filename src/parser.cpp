@@ -10,7 +10,23 @@ Parameter::Parameter(std::string n, std::string t) : name(std::move(n)), param_t
 {
 }
 
-Block::Block(std::unique_ptr<AST> expr) : expression(std::move(expr))
+Block::Block(std::vector<std::unique_ptr<AST>> stmts, std::unique_ptr<AST> expr)
+    : statements(std::move(stmts)), expression(std::move(expr))
+{
+}
+
+VariableDeclaration::VariableDeclaration(std::string n, std::optional<std::string> type,
+                                         std::unique_ptr<AST> init)
+    : name(std::move(n)), declared_type(std::move(type)), initializer(std::move(init))
+{
+}
+
+Assignment::Assignment(std::string n, std::unique_ptr<AST> expr)
+    : name(std::move(n)), value(std::move(expr))
+{
+}
+
+ExpressionStatement::ExpressionStatement(std::unique_ptr<AST> expr) : expression(std::move(expr))
 {
 }
 
@@ -26,6 +42,10 @@ FunctionGroup::FunctionGroup(std::string n, std::vector<std::unique_ptr<Function
 }
 
 IntegerLiteral::IntegerLiteral(int val) : value(val)
+{
+}
+
+BooleanLiteral::BooleanLiteral(bool val) : value(val)
 {
 }
 
@@ -131,8 +151,7 @@ std::unique_ptr<FunctionVariant> Parser::parse_function_variant()
     eat(TokenKind::RightParen);
     eat(TokenKind::Colon);
 
-    std::string return_type(m_current_token.text);
-    eat(TokenKind::Int);
+    std::string return_type = parse_type();
 
     auto block = parse_block();
     eat(TokenKind::Semicolon);
@@ -158,22 +177,148 @@ std::unique_ptr<Parameter> Parser::parse_parameter()
     std::string name(m_current_token.text);
     eat(TokenKind::Identifier);
     eat(TokenKind::Colon);
-    std::string type(m_current_token.text);
-    eat(TokenKind::Int);
+    std::string type = parse_type();
     return std::make_unique<Parameter>(name, type);
+}
+
+std::string Parser::parse_type()
+{
+    if (m_current_token.kind != TokenKind::Int && m_current_token.kind != TokenKind::Bool)
+    {
+        error("Expected a type: int or bool");
+    }
+    std::string name(m_current_token.text);
+    advance();
+
+    return name;
 }
 
 std::unique_ptr<Block> Parser::parse_block()
 {
     eat(TokenKind::LeftBrace);
-    auto expr = parse_expression();
-    eat(TokenKind::RightBrace);
-    return std::make_unique<Block>(std::move(expr));
+
+    std::vector<std::unique_ptr<AST>> statements;
+
+    while (m_current_token.kind != TokenKind::RightBrace)
+    {
+        if (m_current_token.kind == TokenKind::End)
+        {
+            error("Expected '}' before end of file");
+        }
+
+        if (m_current_token.kind == TokenKind::Identifier)
+        {
+            const TokenKind next = peek_kind();
+
+            if (next == TokenKind::Colon || next == TokenKind::ColonEqual)
+            {
+                statements.push_back(parse_variable_declaration());
+                continue;
+            }
+
+            if (next == TokenKind::Equal)
+            {
+                statements.push_back(parse_assignment());
+                continue;
+            }
+        }
+
+        auto expression = parse_expression();
+
+        if (m_current_token.kind == TokenKind::Semicolon)
+        {
+            eat(TokenKind::Semicolon);
+
+            statements.push_back(std::make_unique<ExpressionStatement>(std::move(expression)));
+
+            continue;
+        }
+
+        // An expression without a semicolon must finish the block.
+        eat(TokenKind::RightBrace);
+
+        return std::make_unique<Block>(std::move(statements), std::move(expression));
+    }
+
+    error("Expected a final value expression before '}'");
+}
+
+std::unique_ptr<VariableDeclaration> Parser::parse_variable_declaration()
+{
+    std::string name(m_current_token.text);
+    eat(TokenKind::Identifier);
+
+    std::optional<std::string> type;
+
+    if (m_current_token.kind == TokenKind::Colon)
+    {
+        eat(TokenKind::Colon);
+        type = parse_type();
+    }
+
+    eat(TokenKind::ColonEqual);
+
+    auto initializer = parse_expression();
+
+    eat(TokenKind::Semicolon);
+
+    return std::make_unique<VariableDeclaration>(
+        std::move(name), std::move(type), std::move(initializer));
+}
+
+std::unique_ptr<Assignment> Parser::parse_assignment()
+{
+    std::string name(m_current_token.text);
+    eat(TokenKind::Identifier);
+    eat(TokenKind::Equal);
+
+    auto value = parse_expression();
+
+    eat(TokenKind::Semicolon);
+
+    return std::make_unique<Assignment>(std::move(name), std::move(value));
 }
 
 std::unique_ptr<AST> Parser::parse_expression()
 {
-    return parse_addition();
+    return parse_equality();
+}
+
+std::unique_ptr<AST> Parser::parse_equality()
+{
+    auto node = parse_comparison();
+
+    while (m_current_token.kind == TokenKind::EqualEqual)
+    {
+        const TokenKind op = m_current_token.kind;
+        advance();
+
+        auto right = parse_comparison();
+
+        node = std::make_unique<BinaryExpression>(op, std::move(node), std::move(right));
+    }
+
+    return node;
+}
+
+std::unique_ptr<AST> Parser::parse_comparison()
+{
+    auto node = parse_addition();
+
+    while (m_current_token.kind == TokenKind::Less ||
+           m_current_token.kind == TokenKind::LessEqual ||
+           m_current_token.kind == TokenKind::Greater ||
+           m_current_token.kind == TokenKind::GreaterEqual)
+    {
+        const TokenKind op = m_current_token.kind;
+        advance();
+
+        auto right = parse_addition();
+
+        node = std::make_unique<BinaryExpression>(op, std::move(node), std::move(right));
+    }
+
+    return node;
 }
 
 std::unique_ptr<AST> Parser::parse_addition()
@@ -225,7 +370,14 @@ std::unique_ptr<AST> Parser::parse_unary()
 
 std::unique_ptr<AST> Parser::parse_primary()
 {
-    if (m_current_token.kind == TokenKind::IntegerLiteral)
+    if (m_current_token.kind == TokenKind::True || m_current_token.kind == TokenKind::False)
+    {
+        const bool value = m_current_token.kind == TokenKind::True;
+        advance();
+
+        return std::make_unique<BooleanLiteral>(value);
+    }
+    else if (m_current_token.kind == TokenKind::IntegerLiteral)
     {
         int val = std::stoi(std::string(m_current_token.text));
         eat(TokenKind::IntegerLiteral);

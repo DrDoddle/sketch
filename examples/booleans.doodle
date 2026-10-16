@@ -1,0 +1,17 @@
+fn within_limit {
+    >(value: int, limit: int): bool {
+        value <= limit
+    };
+}
+
+fn main {
+    >(): int {
+        accepted: bool := within_limit(value: 5, limit: 10);
+        expected := true;
+
+        matches := accepted == expected;
+        matches = false;
+
+        0
+    };
+}

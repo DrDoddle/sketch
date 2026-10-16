@@ -4,7 +4,8 @@
 
 enum class Type
 {
-    Int
+    Int,
+    Bool
 };
 
 #include <unordered_map>
@@ -23,6 +24,8 @@ private:
     void check_function_group(FunctionGroup &group);
 
     void check_function_variant(FunctionVariant &variant);
+
+    void check_statement(AST &statement);
 
     Type check_expression(AST &expression);
 

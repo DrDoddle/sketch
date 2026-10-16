@@ -30,42 +30,36 @@ std::string read_source(const std::string &path)
 
 int main(int argc, char *argv[])
 {
-    if (argc < 2)
+    if (argc != 2)
     {
-        std::cerr << "error: incorrect usage!\nCorrect usage: " << argv[0] << " <file.doodle>\n";
+        std::cerr
+            << "Usage: " << argv[0] << " <file.doodle>\n";
+
         return 1;
     }
-    // TODO: proper cmd line arguments
-    std::string path = argv[1];
+
     try
     {
-        const std::string source = read_source(path);
+        const std::string source = read_source(argv[1]);
 
-        // Pass source to your scanner.
         Lexer lexer(source);
         Parser parser(lexer);
-        try
-        {
-            auto program = parser.parse();
-            std::cout << "Parsing successful!\n";
 
-            SemanticAnalyzer analyzer;
-            analyzer.analyze(*program);
+        auto program = parser.parse();
 
-            CodeGenerator generator;
-            generator.generate(*program);
-            generator.write_ir("output.ll");
-        }
-        catch (const std::exception &e)
-        {
-            std::cerr << e.what() << '\n';
-        }
+        SemanticAnalyzer analyzer;
+        analyzer.analyze(*program);
+
+        CodeGenerator generator;
+        generator.generate(*program);
+        generator.write_ir("output.ll");
+
+        std::cout << "Compilation successful!\n";
+        return 0;
     }
     catch (const std::exception &error)
     {
         std::cerr << error.what() << '\n';
         return 1;
     }
-
-    return 0;
 }

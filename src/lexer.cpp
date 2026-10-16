@@ -61,6 +61,21 @@ Token Lexer::next()
             return make_token(TokenKind::Int, start);
         }
 
+        if (word == "bool")
+        {
+            return make_token(TokenKind::Bool, start);
+        }
+
+        if (word == "true")
+        {
+            return make_token(TokenKind::True, start);
+        }
+
+        if (word == "false")
+        {
+            return make_token(TokenKind::False, start);
+        }
+
         return make_token(TokenKind::Identifier, start);
     }
 
@@ -87,13 +102,52 @@ Token Lexer::next()
         case '}':
             return make_token(TokenKind::RightBrace, start);
         case ':':
+        {
+            if (!at_end() && peek() == '=')
+            {
+                advance();
+                return make_token(TokenKind::ColonEqual, start);
+            }
+
             return make_token(TokenKind::Colon, start);
+        }
+
+        case '=':
+        {
+            if (!at_end() && peek() == '=')
+            {
+                advance();
+                return make_token(TokenKind::EqualEqual, start);
+            }
+
+            return make_token(TokenKind::Equal, start);
+        }
+
+        case '<':
+        {
+            if (!at_end() && peek() == '=')
+            {
+                advance();
+                return make_token(TokenKind::LessEqual, start);
+            }
+
+            return make_token(TokenKind::Less, start);
+        }
+
+        case '>':
+        {
+            if (!at_end() && peek() == '=')
+            {
+                advance();
+                return make_token(TokenKind::GreaterEqual, start);
+            }
+
+            return make_token(TokenKind::Greater, start);
+        }
         case ';':
             return make_token(TokenKind::Semicolon, start);
         case ',':
             return make_token(TokenKind::Comma, start);
-        case '>':
-            return make_token(TokenKind::Greater, start);
         case '+':
             return make_token(TokenKind::Plus, start);
         case '-':

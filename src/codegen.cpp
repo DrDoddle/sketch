@@ -2,6 +2,7 @@
 
 #include <llvm/IR/BasicBlock.h>
 #include <llvm/IR/Function.h>
+#include <llvm/IR/Instructions.h>
 #include <llvm/IR/Intrinsics.h>
 #include <llvm/IR/Verifier.h>
 #include <llvm/Support/FileSystem.h>
@@ -87,6 +88,10 @@ llvm::Type *CodeGenerator::lower_type(const std::string &type)
     {
         return m_builder.getInt32Ty();
     }
+    if (type == "bool")
+    {
+        return m_builder.getInt1Ty();
+    }
 
     throw std::runtime_error("Unsupported type: " + type);
 }
@@ -132,6 +137,10 @@ void CodeGenerator::emit_variant(FunctionVariant &variant)
 
     m_scope.clear();
 
+    auto *entry = llvm::BasicBlock::Create(m_context, "entry", function);
+
+    m_builder.SetInsertPoint(entry);
+
     std::size_t index = 0;
 
     for (auto &argument : function->args())
@@ -139,15 +148,61 @@ void CodeGenerator::emit_variant(FunctionVariant &variant)
         const auto &parameter = variant.parameters[index++];
 
         argument.setName(parameter->name);
-        m_scope.emplace(parameter->name, &argument);
+
+        auto *storage = create_local(parameter->name, argument.getType());
+        m_builder.CreateStore(&argument, storage);
+
+        m_scope.emplace(parameter->name, storage);
     }
 
-    auto *entry = llvm::BasicBlock::Create(m_context, "entry", function);
-
-    m_builder.SetInsertPoint(entry);
+    for (auto &statement : variant.body->statements)
+    {
+        emit_statement(*statement);
+    }
 
     auto *result = emit_expression(*variant.body->expression);
     m_builder.CreateRet(result);
+}
+
+llvm::AllocaInst *CodeGenerator::create_local(const std::string &name, llvm::Type *type)
+{
+    auto *function = m_builder.GetInsertBlock()->getParent();
+    auto &entry = function->getEntryBlock();
+
+    llvm::IRBuilder<> entry_builder(&entry, entry.begin());
+
+    return entry_builder.CreateAlloca(type, nullptr, name);
+}
+
+void CodeGenerator::emit_statement(AST &statement)
+{
+    if (auto *declaration = dynamic_cast<VariableDeclaration *>(&statement))
+    {
+        auto *value = emit_expression(*declaration->initializer);
+
+        auto *storage = create_local(declaration->name, value->getType());
+
+        m_builder.CreateStore(value, storage);
+        m_scope.emplace(declaration->name, storage);
+        return;
+    }
+
+    if (auto *assignment = dynamic_cast<Assignment *>(&statement))
+    {
+        auto *value = emit_expression(*assignment->value);
+
+        m_builder.CreateStore(value, m_scope.at(assignment->name));
+
+        return;
+    }
+
+    if (auto *expr = dynamic_cast<ExpressionStatement *>(&statement))
+    {
+        emit_expression(*expr->expression);
+        return;
+    }
+
+    throw std::runtime_error("Unsupported statement in code generation");
 }
 
 llvm::Value *CodeGenerator::emit_expression(AST &expression)
@@ -155,6 +210,10 @@ llvm::Value *CodeGenerator::emit_expression(AST &expression)
     if (auto *literal = dynamic_cast<IntegerLiteral *>(&expression))
     {
         return m_builder.getInt32(static_cast<std::uint32_t>(literal->value));
+    }
+    if (auto *literal = dynamic_cast<BooleanLiteral *>(&expression))
+    {
+        return m_builder.getInt1(literal->value);
     }
 
     if (auto *identifier = dynamic_cast<Identifier *>(&expression))
@@ -166,7 +225,8 @@ llvm::Value *CodeGenerator::emit_expression(AST &expression)
             throw std::runtime_error("Unresolved identifier: " + identifier->name);
         }
 
-        return found->second;
+        return m_builder.CreateLoad(
+            found->second->getAllocatedType(), found->second, identifier->name + ".value");
     }
 
     if (auto *binary = dynamic_cast<BinaryExpression *>(&expression))
@@ -187,6 +247,21 @@ llvm::Value *CodeGenerator::emit_expression(AST &expression)
 
             case TokenKind::Slash:
                 return emit_division(left, right);
+
+            case TokenKind::EqualEqual:
+                return m_builder.CreateICmpEQ(left, right, "eqtmp");
+
+            case TokenKind::Less:
+                return m_builder.CreateICmpSLT(left, right, "lttmp");
+
+            case TokenKind::LessEqual:
+                return m_builder.CreateICmpSLE(left, right, "letmp");
+
+            case TokenKind::Greater:
+                return m_builder.CreateICmpSGT(left, right, "gttmp");
+
+            case TokenKind::GreaterEqual:
+                return m_builder.CreateICmpSGE(left, right, "getmp");
 
             default:
                 throw std::runtime_error("Unsupported binary operator");

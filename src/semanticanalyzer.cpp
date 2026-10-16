@@ -11,6 +11,10 @@ namespace
         {
             return Type::Int;
         }
+        if (name == "bool")
+        {
+            return Type::Bool;
+        }
 
         throw std::runtime_error("Unknown type: " + name);
     }
@@ -79,6 +83,11 @@ void SemanticAnalyzer::check_function_variant(FunctionVariant &variant)
         }
     }
 
+    for (auto &statement : variant.body->statements)
+    {
+        check_statement(*statement);
+    }
+
     const Type expected = resolve_type(variant.return_type);
     const Type actual = check_expression(*variant.body->expression);
 
@@ -88,11 +97,69 @@ void SemanticAnalyzer::check_function_variant(FunctionVariant &variant)
     }
 }
 
+void SemanticAnalyzer::check_statement(AST &statement)
+{
+    if (auto *declaration = dynamic_cast<VariableDeclaration *>(&statement))
+    {
+        if (m_scope.find(declaration->name) != m_scope.end())
+        {
+            throw std::runtime_error("Duplicate variable: " + declaration->name);
+        }
+
+        // Check before inserting the name: a := a cannot declare itself.
+        const Type actual = check_expression(*declaration->initializer);
+
+        if (declaration->declared_type)
+        {
+            const Type expected = resolve_type(*declaration->declared_type);
+
+            if (actual != expected)
+            {
+                throw std::runtime_error("Initializer type mismatch for: " + declaration->name);
+            }
+        }
+
+        m_scope.emplace(declaration->name, actual);
+        return;
+    }
+
+    if (auto *assignment = dynamic_cast<Assignment *>(&statement))
+    {
+        const auto variable = m_scope.find(assignment->name);
+
+        if (variable == m_scope.end())
+        {
+            throw std::runtime_error("Assignment to undeclared variable: " + assignment->name);
+        }
+
+        const Type actual = check_expression(*assignment->value);
+
+        if (variable->second != actual)
+        {
+            throw std::runtime_error("Assignment type mismatch for: " + assignment->name);
+        }
+
+        return;
+    }
+
+    if (auto *expr = dynamic_cast<ExpressionStatement *>(&statement))
+    {
+        check_expression(*expr->expression);
+        return;
+    }
+
+    throw std::runtime_error("Unsupported statement");
+}
+
 Type SemanticAnalyzer::check_expression(AST &expression)
 {
     if (dynamic_cast<IntegerLiteral *>(&expression))
     {
         return Type::Int;
+    }
+    if (dynamic_cast<BooleanLiteral *>(&expression))
+    {
+        return Type::Bool;
     }
 
     if (auto *identifier = dynamic_cast<Identifier *>(&expression))
@@ -112,12 +179,47 @@ Type SemanticAnalyzer::check_expression(AST &expression)
         const Type left = check_expression(*binary->left);
         const Type right = check_expression(*binary->right);
 
-        if (left != Type::Int || right != Type::Int)
+        switch (binary->op)
         {
-            throw std::runtime_error("Arithmetic requires two integers");
-        }
+            case TokenKind::Plus:
+            case TokenKind::Minus:
+            case TokenKind::Star:
+            case TokenKind::Slash:
+            {
+                if (left != Type::Int || right != Type::Int)
+                {
+                    throw std::runtime_error("Arithmetic requires two integers");
+                }
 
-        return Type::Int;
+                return Type::Int;
+            }
+
+            case TokenKind::Less:
+            case TokenKind::LessEqual:
+            case TokenKind::Greater:
+            case TokenKind::GreaterEqual:
+            {
+                if (left != Type::Int || right != Type::Int)
+                {
+                    throw std::runtime_error("Ordered comparison requires two integers");
+                }
+
+                return Type::Bool;
+            }
+
+            case TokenKind::EqualEqual:
+            {
+                if (left != right)
+                {
+                    throw std::runtime_error("Equality requires operands of the same type");
+                }
+
+                return Type::Bool;
+            }
+
+            default:
+                throw std::runtime_error("Unsupported binary operator");
+        }
     }
 
     if (auto *unary = dynamic_cast<UnaryExpression *>(&expression))

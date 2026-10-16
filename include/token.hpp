@@ -9,6 +9,7 @@ enum class TokenKind
 
     Fn,
     Int,
+    Bool,
 
     LeftParen,
     RightParen,
@@ -18,11 +19,24 @@ enum class TokenKind
     Colon,
     Semicolon,
     Comma,
+
+    ColonEqual,
+    Equal,
+
+
+    EqualEqual,
     Greater,
+    Less,
+    LessEqual,
+    GreaterEqual,
+
     Plus,
     Minus,
     Star,
-    Slash
+    Slash,
+
+    True,
+    False,
 };
 
 struct SourceSpan

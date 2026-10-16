@@ -1,0 +1,8 @@
+fn main {
+    >(): int {
+        a: int := 5;
+        longvar := 3;
+        a = a + longvar;
+        a
+    };
+}

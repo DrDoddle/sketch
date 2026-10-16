@@ -3,6 +3,7 @@
 #include "parser.hpp"
 
 #include <llvm/IR/IRBuilder.h>
+#include <llvm/IR/Instructions.h>
 #include <llvm/IR/LLVMContext.h>
 #include <llvm/IR/Module.h>
 
@@ -27,13 +28,17 @@ private:
     llvm::IRBuilder<> m_builder;
 
     std::unordered_map<FunctionVariant *, llvm::Function *> m_functions;
-    std::unordered_map<std::string, llvm::Value *> m_scope;
+    std::unordered_map<std::string, llvm::AllocaInst *> m_scope;
 
     llvm::Type *lower_type(const std::string &type);
 
     void declare_group(FunctionGroup &group);
 
     void emit_variant(FunctionVariant &variant);
+
+    llvm::AllocaInst *create_local(const std::string &name, llvm::Type *type);
+
+    void emit_statement(AST &statement);
 
     llvm::Value *emit_expression(AST &expression);
 

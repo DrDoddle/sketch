@@ -1,0 +1,28 @@
+{
+    "name": "doodle-language",
+    "displayName": "Doodle",
+    "description": "Syntax highlighting for the Doodle programming language",
+    "version": "0.0.1",
+    "publisher": "drdoddle",
+    "engines": {
+        "vscode": "^1.90.0"
+    },
+    "categories": ["Programming Languages"],
+    "contributes": {
+        "languages": [
+            {
+                "id": "doodle",
+                "aliases": ["Doodle", "doodle"],
+                "extensions": [".doodle"],
+                "configuration": "./language-configuration.json"
+            }
+        ],
+        "grammars": [
+            {
+                "language": "doodle",
+                "scopeName": "source.doodle",
+                "path": "./syntaxes/doodle.tmLanguage.json"
+            }
+        ]
+    }
+}
