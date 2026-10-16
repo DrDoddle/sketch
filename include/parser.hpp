@@ -82,12 +82,21 @@ struct Call : public AST
     Call(std::string n, std::vector<std::unique_ptr<Argument>> args);
 };
 
-struct AddExpression : public AST
+struct BinaryExpression : public AST
 {
+    TokenKind op;
     std::unique_ptr<AST> left;
     std::unique_ptr<AST> right;
 
-    AddExpression(std::unique_ptr<AST> l, std::unique_ptr<AST> r);
+    BinaryExpression(TokenKind operation, std::unique_ptr<AST> l, std::unique_ptr<AST> r);
+};
+
+struct UnaryExpression : public AST
+{
+    TokenKind op;
+    std::unique_ptr<AST> operand;
+
+    UnaryExpression(TokenKind operation, std::unique_ptr<AST> expr);
 };
 
 class Parser
@@ -123,6 +132,10 @@ private:
     std::unique_ptr<AST> parse_expression();
 
     std::unique_ptr<AST> parse_addition();
+
+    std::unique_ptr<AST> parse_multiplication();
+
+    std::unique_ptr<AST> parse_unary();
 
     std::unique_ptr<AST> parse_primary();
 

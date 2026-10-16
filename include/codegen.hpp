@@ -37,5 +37,7 @@ private:
 
     llvm::Value *emit_expression(AST &expression);
 
+    llvm::Value *emit_division(llvm::Value *left, llvm::Value *right);
+
     llvm::Value *emit_call(Call &call);
 };

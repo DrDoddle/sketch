@@ -2,11 +2,14 @@
 
 #include <llvm/IR/BasicBlock.h>
 #include <llvm/IR/Function.h>
+#include <llvm/IR/Intrinsics.h>
 #include <llvm/IR/Verifier.h>
 #include <llvm/Support/FileSystem.h>
 #include <llvm/Support/raw_ostream.h>
 
+
 #include <cstdint>
+#include <limits>
 #include <stdexcept>
 #include <system_error>
 #include <vector>
@@ -166,12 +169,45 @@ llvm::Value *CodeGenerator::emit_expression(AST &expression)
         return found->second;
     }
 
-    if (auto *addition = dynamic_cast<AddExpression *>(&expression))
+    if (auto *binary = dynamic_cast<BinaryExpression *>(&expression))
     {
-        auto *left = emit_expression(*addition->left);
-        auto *right = emit_expression(*addition->right);
+        auto *left = emit_expression(*binary->left);
+        auto *right = emit_expression(*binary->right);
 
-        return m_builder.CreateAdd(left, right, "addtmp");
+        switch (binary->op)
+        {
+            case TokenKind::Plus:
+                return m_builder.CreateAdd(left, right, "addtmp");
+
+            case TokenKind::Minus:
+                return m_builder.CreateSub(left, right, "subtmp");
+
+            case TokenKind::Star:
+                return m_builder.CreateMul(left, right, "multmp");
+
+            case TokenKind::Slash:
+                return emit_division(left, right);
+
+            default:
+                throw std::runtime_error("Unsupported binary operator");
+        }
+    }
+
+    if (auto *unary = dynamic_cast<UnaryExpression *>(&expression))
+    {
+        auto *value = emit_expression(*unary->operand);
+
+        switch (unary->op)
+        {
+            case TokenKind::Plus:
+                return value;
+
+            case TokenKind::Minus:
+                return m_builder.CreateNeg(value, "negtmp");
+
+            default:
+                throw std::runtime_error("Unsupported unary operator");
+        }
     }
 
     if (auto *call = dynamic_cast<Call *>(&expression))
@@ -180,6 +216,39 @@ llvm::Value *CodeGenerator::emit_expression(AST &expression)
     }
 
     throw std::runtime_error("Unsupported expression in code generation");
+}
+
+llvm::Value *CodeGenerator::emit_division(llvm::Value *left, llvm::Value *right)
+{
+    auto *zero = m_builder.getInt32(0);
+    auto *minus_one = m_builder.getInt32(static_cast<std::uint32_t>(-1));
+    auto *minimum =
+        m_builder.getInt32(static_cast<std::uint32_t>(std::numeric_limits<std::int32_t>::min()));
+
+    auto *is_zero = m_builder.CreateICmpEQ(right, zero);
+
+    auto *overflows = m_builder.CreateAnd(m_builder.CreateICmpEQ(left, minimum),
+                                          m_builder.CreateICmpEQ(right, minus_one));
+
+    auto *invalid = m_builder.CreateOr(is_zero, overflows);
+
+    auto *function = m_builder.GetInsertBlock()->getParent();
+
+    auto *failure = llvm::BasicBlock::Create(m_context, "division.fail", function);
+    auto *success = llvm::BasicBlock::Create(m_context, "division.ok", function);
+
+    m_builder.CreateCondBr(invalid, failure, success);
+
+    m_builder.SetInsertPoint(failure);
+
+    auto *trap = llvm::Intrinsic::getOrInsertDeclaration(m_module.get(), llvm::Intrinsic::trap);
+
+    m_builder.CreateCall(trap);
+    m_builder.CreateUnreachable();
+
+    m_builder.SetInsertPoint(success);
+
+    return m_builder.CreateSDiv(left, right, "divtmp");
 }
 
 llvm::Value *CodeGenerator::emit_call(Call &call)

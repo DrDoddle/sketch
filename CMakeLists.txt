@@ -166,6 +166,7 @@ set(SKETCH_FORMAT_FILES
     "${CMAKE_CURRENT_SOURCE_DIR}/include/parser.hpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/semanticanalyzer.hpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/codegen.hpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/token.hpp"
 )
 find_program(SKETCH_CLANG_FORMAT_EXECUTABLE NAMES clang-format)
 if (SKETCH_CLANG_FORMAT_EXECUTABLE)

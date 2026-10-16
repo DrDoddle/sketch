@@ -96,6 +96,12 @@ Token Lexer::next()
             return make_token(TokenKind::Greater, start);
         case '+':
             return make_token(TokenKind::Plus, start);
+        case '-':
+            return make_token(TokenKind::Minus, start);
+        case '*':
+            return make_token(TokenKind::Star, start);
+        case '/':
+            return make_token(TokenKind::Slash, start);
 
         default:
             throw std::runtime_error("Unexpected character '" + std::string(1, ch) +

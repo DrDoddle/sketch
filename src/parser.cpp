@@ -43,8 +43,14 @@ Call::Call(std::string n, std::vector<std::unique_ptr<Argument>> args)
 {
 }
 
-AddExpression::AddExpression(std::unique_ptr<AST> l, std::unique_ptr<AST> r)
-    : left(std::move(l)), right(std::move(r))
+BinaryExpression::BinaryExpression(TokenKind operation, std::unique_ptr<AST> l,
+                                   std::unique_ptr<AST> r)
+    : op(operation), left(std::move(l)), right(std::move(r))
+{
+}
+
+UnaryExpression::UnaryExpression(TokenKind operation, std::unique_ptr<AST> expr)
+    : op(operation), operand(std::move(expr))
 {
 }
 
@@ -172,14 +178,49 @@ std::unique_ptr<AST> Parser::parse_expression()
 
 std::unique_ptr<AST> Parser::parse_addition()
 {
-    auto node = parse_primary();
-    while (m_current_token.kind == TokenKind::Plus)
+    auto node = parse_multiplication();
+
+    while (m_current_token.kind == TokenKind::Plus || m_current_token.kind == TokenKind::Minus)
     {
-        eat(TokenKind::Plus);
-        auto right = parse_primary();
-        node = std::make_unique<AddExpression>(std::move(node), std::move(right));
+        const TokenKind op = m_current_token.kind;
+        advance();
+
+        auto right = parse_multiplication();
+
+        node = std::make_unique<BinaryExpression>(op, std::move(node), std::move(right));
     }
+
     return node;
+}
+
+std::unique_ptr<AST> Parser::parse_multiplication()
+{
+    auto node = parse_unary();
+
+    while (m_current_token.kind == TokenKind::Star || m_current_token.kind == TokenKind::Slash)
+    {
+        const TokenKind op = m_current_token.kind;
+        advance();
+
+        auto right = parse_unary();
+
+        node = std::make_unique<BinaryExpression>(op, std::move(node), std::move(right));
+    }
+
+    return node;
+}
+
+std::unique_ptr<AST> Parser::parse_unary()
+{
+    if (m_current_token.kind == TokenKind::Plus || m_current_token.kind == TokenKind::Minus)
+    {
+        const TokenKind op = m_current_token.kind;
+        advance();
+
+        return std::make_unique<UnaryExpression>(op, parse_unary());
+    }
+
+    return parse_primary();
 }
 
 std::unique_ptr<AST> Parser::parse_primary()

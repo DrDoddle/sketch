@@ -1,7 +1,8 @@
 #include <cstddef>
 #include <string_view>
 
-enum class TokenKind {
+enum class TokenKind
+{
     End,
     Identifier,
     IntegerLiteral,
@@ -18,15 +19,20 @@ enum class TokenKind {
     Semicolon,
     Comma,
     Greater,
-    Plus
+    Plus,
+    Minus,
+    Star,
+    Slash
 };
 
-struct SourceSpan {
+struct SourceSpan
+{
     std::size_t offset;
     std::size_t length;
 };
 
-struct Token {
+struct Token
+{
     TokenKind kind;
     std::string_view text;
     SourceSpan span;

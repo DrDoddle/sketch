@@ -1,0 +1,21 @@
+fn damage {
+    // Normal attack.
+    >(power: int, armor: int): int {
+        power * 2 - armor
+    };
+
+    // Critical attack, sharing the normal calculation.
+    >(power: int, armor: int, multiplier: int): int {
+        damage(power: power, armor: armor) * multiplier
+    };
+}
+
+fn main {
+    >(): int {
+        damage(
+            multiplier: 3,
+            armor: 4,
+            power: 10
+        )
+    };
+}

@@ -107,14 +107,24 @@ Type SemanticAnalyzer::check_expression(AST &expression)
         return it->second;
     }
 
-    if (auto *addition = dynamic_cast<AddExpression *>(&expression))
+    if (auto *binary = dynamic_cast<BinaryExpression *>(&expression))
     {
-        const Type left = check_expression(*addition->left);
-        const Type right = check_expression(*addition->right);
+        const Type left = check_expression(*binary->left);
+        const Type right = check_expression(*binary->right);
 
         if (left != Type::Int || right != Type::Int)
         {
-            throw std::runtime_error("Addition requires two integers");
+            throw std::runtime_error("Arithmetic requires two integers");
+        }
+
+        return Type::Int;
+    }
+
+    if (auto *unary = dynamic_cast<UnaryExpression *>(&expression))
+    {
+        if (check_expression(*unary->operand) != Type::Int)
+        {
+            throw std::runtime_error("Unary arithmetic requires an integer");
         }
 
         return Type::Int;

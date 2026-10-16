@@ -1,0 +1,15 @@
+fn convert {
+    >(minutes: int): int {
+        minutes * 60
+    };
+
+    >(hours: int): int {
+        hours * 3600
+    };
+}
+
+fn main {
+    >(): int {
+        convert(hours: 1) / convert(minutes: 1)
+    };
+}

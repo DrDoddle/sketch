@@ -28,12 +28,18 @@ std::string read_source(const std::string &path)
     return source;
 }
 
-int main()
+int main(int argc, char *argv[])
 {
+    if (argc < 2)
+    {
+        std::cerr << "error: incorrect usage!\nCorrect usage: " << argv[0] << " <file.doodle>\n";
+        return 1;
+    }
+    // TODO: proper cmd line arguments
+    std::string path = argv[1];
     try
     {
-        const std::string source =
-            read_source("test_source.doodle");
+        const std::string source = read_source(path);
 
         // Pass source to your scanner.
         Lexer lexer(source);
