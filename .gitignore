@@ -1,0 +1,22 @@
+# Build directories
+/build/
+/build-*/
+/cmake-build-*/
+/out/
+
+# Local IDE settings
+/.idea/
+/.vscode/
+
+# Compiled files
+*.exe
+*.dll
+*.o
+*.obj
+*.a
+*.lib
+*.pdb
+
+# Generated output
+/output.ll
+/compile_commands.json

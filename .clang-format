@@ -1,0 +1,27 @@
+BasedOnStyle: LLVM
+
+IndentWidth: 4
+ContinuationIndentWidth: 4
+TabWidth: 4
+UseTab: Never
+ColumnLimit: 100
+
+BreakBeforeBraces: Allman
+
+AllowShortFunctionsOnASingleLine: None
+AllowShortBlocksOnASingleLine: Never
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLoopsOnASingleLine: false
+AllowShortLambdasOnASingleLine: None
+
+BinPackArguments: false
+
+PointerAlignment: Right
+DerivePointerAlignment: false
+
+IndentCaseLabels: true
+AccessModifierOffset: -4
+NamespaceIndentation: All
+
+MaxEmptyLinesToKeep: 2
+SeparateDefinitionBlocks: Always
