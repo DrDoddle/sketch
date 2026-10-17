@@ -1,0 +1,20 @@
+fn fib {
+    >(n: int): int
+    {
+        if n <= 1
+        {
+            n
+        }
+        else
+        {
+            fib(n: n - 1) + fib(n: n - 2)
+        }
+    };
+}
+
+fn main {
+    >(): int
+    {
+        fib(n: 10)
+    };
+}

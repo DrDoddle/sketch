@@ -155,12 +155,7 @@ void CodeGenerator::emit_variant(FunctionVariant &variant)
         m_scope.emplace(parameter->name, storage);
     }
 
-    for (auto &statement : variant.body->statements)
-    {
-        emit_statement(*statement);
-    }
-
-    auto *result = emit_expression(*variant.body->expression);
+    auto *result = emit_block(*variant.body);
     m_builder.CreateRet(result);
 }
 
@@ -172,6 +167,80 @@ llvm::AllocaInst *CodeGenerator::create_local(const std::string &name, llvm::Typ
     llvm::IRBuilder<> entry_builder(&entry, entry.begin());
 
     return entry_builder.CreateAlloca(type, nullptr, name);
+}
+
+llvm::Value *CodeGenerator::emit_block(Block &block)
+{
+    auto saved_scope = m_scope;
+
+    try
+    {
+        for (auto &statement : block.statements)
+        {
+            emit_statement(*statement);
+        }
+
+        auto *result = emit_expression(*block.expression);
+
+        m_scope.swap(saved_scope);
+        return result;
+    }
+    catch (...)
+    {
+        m_scope.swap(saved_scope);
+        throw;
+    }
+}
+
+llvm::Value *CodeGenerator::emit_if(IfExpression &expression)
+{
+    auto *condition = emit_expression(*expression.condition);
+
+    if (!condition->getType()->isIntegerTy(1))
+    {
+        throw std::runtime_error("Expected boolean condition during code generation");
+    }
+
+    auto *function = m_builder.GetInsertBlock()->getParent();
+
+    auto *then_block = llvm::BasicBlock::Create(m_context, "if.then", function);
+
+    auto *else_block = llvm::BasicBlock::Create(m_context, "if.else", function);
+
+    auto *merge_block = llvm::BasicBlock::Create(m_context, "if.merge", function);
+
+    m_builder.CreateCondBr(condition, then_block, else_block);
+
+    // True branch.
+    m_builder.SetInsertPoint(then_block);
+
+    auto *then_value = emit_block(*expression.then_branch);
+    auto *then_end = m_builder.GetInsertBlock();
+
+    m_builder.CreateBr(merge_block);
+
+    // False branch.
+    m_builder.SetInsertPoint(else_block);
+
+    auto *else_value = emit_block(*expression.else_branch);
+    auto *else_end = m_builder.GetInsertBlock();
+
+    m_builder.CreateBr(merge_block);
+
+    if (then_value->getType() != else_value->getType())
+    {
+        throw std::runtime_error("Mismatched branch types during code generation");
+    }
+
+    // Select the value supplied by the executed branch.
+    m_builder.SetInsertPoint(merge_block);
+
+    auto *result = m_builder.CreatePHI(then_value->getType(), 2, "iftmp");
+
+    result->addIncoming(then_value, then_end);
+    result->addIncoming(else_value, else_end);
+
+    return result;
 }
 
 void CodeGenerator::emit_statement(AST &statement)
@@ -207,6 +276,11 @@ void CodeGenerator::emit_statement(AST &statement)
 
 llvm::Value *CodeGenerator::emit_expression(AST &expression)
 {
+    if (auto *conditional = dynamic_cast<IfExpression *>(&expression))
+    {
+        return emit_if(*conditional);
+    }
+
     if (auto *literal = dynamic_cast<IntegerLiteral *>(&expression))
     {
         return m_builder.getInt32(static_cast<std::uint32_t>(literal->value));
@@ -248,6 +322,9 @@ llvm::Value *CodeGenerator::emit_expression(AST &expression)
             case TokenKind::Slash:
                 return emit_division(left, right);
 
+            case TokenKind::BangEqual:
+                return m_builder.CreateICmpNE(left, right, "netmp");
+
             case TokenKind::EqualEqual:
                 return m_builder.CreateICmpEQ(left, right, "eqtmp");
 
@@ -279,6 +356,9 @@ llvm::Value *CodeGenerator::emit_expression(AST &expression)
 
             case TokenKind::Minus:
                 return m_builder.CreateNeg(value, "negtmp");
+
+            case TokenKind::Bang:
+                return m_builder.CreateNot(value, "nottmp");
 
             default:
                 throw std::runtime_error("Unsupported unary operator");

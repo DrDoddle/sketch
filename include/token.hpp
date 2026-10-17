@@ -29,6 +29,8 @@ enum class TokenKind
     Less,
     LessEqual,
     GreaterEqual,
+    Bang,
+    BangEqual,
 
     Plus,
     Minus,
@@ -37,6 +39,9 @@ enum class TokenKind
 
     True,
     False,
+
+    If,
+    Else
 };
 
 struct SourceSpan

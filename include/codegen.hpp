@@ -40,6 +40,10 @@ private:
 
     void emit_statement(AST &statement);
 
+    llvm::Value *emit_block(Block &block);
+
+    llvm::Value *emit_if(IfExpression &expression);
+
     llvm::Value *emit_expression(AST &expression);
 
     llvm::Value *emit_division(llvm::Value *left, llvm::Value *right);

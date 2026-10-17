@@ -34,6 +34,16 @@ struct Block : public AST
     Block(std::vector<std::unique_ptr<AST>> stmts, std::unique_ptr<AST> expr);
 };
 
+struct IfExpression : public AST
+{
+    std::unique_ptr<AST> condition;
+    std::unique_ptr<Block> then_branch;
+    std::unique_ptr<Block> else_branch;
+
+    IfExpression(std::unique_ptr<AST> cond, std::unique_ptr<Block> then_block,
+                 std::unique_ptr<Block> else_block);
+};
+
 struct VariableDeclaration : public AST
 {
     std::string name;
@@ -164,12 +174,14 @@ private:
 
     std::unique_ptr<Block> parse_block();
 
+    std::unique_ptr<IfExpression> parse_if();
+
     std::unique_ptr<VariableDeclaration> parse_variable_declaration();
 
     std::unique_ptr<Assignment> parse_assignment();
 
     std::unique_ptr<AST> parse_equality();
-    
+
     std::unique_ptr<AST> parse_comparison();
 
     std::unique_ptr<AST> parse_expression();

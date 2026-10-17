@@ -27,6 +27,8 @@ private:
 
     void check_statement(AST &statement);
 
+    Type check_block(Block &block);
+
     Type check_expression(AST &expression);
 
     Type check_call(Call &call);

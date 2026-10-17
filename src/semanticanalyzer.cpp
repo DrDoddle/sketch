@@ -83,17 +83,35 @@ void SemanticAnalyzer::check_function_variant(FunctionVariant &variant)
         }
     }
 
-    for (auto &statement : variant.body->statements)
-    {
-        check_statement(*statement);
-    }
-
     const Type expected = resolve_type(variant.return_type);
-    const Type actual = check_expression(*variant.body->expression);
+    const Type actual = check_block(*variant.body);
 
     if (actual != expected)
     {
         throw std::runtime_error("Body type does not match declared return type");
+    }
+}
+
+Type SemanticAnalyzer::check_block(Block &block)
+{
+    auto saved_scope = m_scope;
+
+    try
+    {
+        for (auto &statement : block.statements)
+        {
+            check_statement(*statement);
+        }
+
+        const Type result = check_expression(*block.expression);
+
+        m_scope.swap(saved_scope);
+        return result;
+    }
+    catch (...)
+    {
+        m_scope.swap(saved_scope);
+        throw;
     }
 }
 
@@ -132,9 +150,10 @@ void SemanticAnalyzer::check_statement(AST &statement)
             throw std::runtime_error("Assignment to undeclared variable: " + assignment->name);
         }
 
+        const Type expected = variable->second;
         const Type actual = check_expression(*assignment->value);
 
-        if (variable->second != actual)
+        if (expected != actual)
         {
             throw std::runtime_error("Assignment type mismatch for: " + assignment->name);
         }
@@ -160,6 +179,24 @@ Type SemanticAnalyzer::check_expression(AST &expression)
     if (dynamic_cast<BooleanLiteral *>(&expression))
     {
         return Type::Bool;
+    }
+
+    if (auto *conditional = dynamic_cast<IfExpression *>(&expression))
+    {
+        if (check_expression(*conditional->condition) != Type::Bool)
+        {
+            throw std::runtime_error("An if condition must be a boolean");
+        }
+
+        const Type then_type = check_block(*conditional->then_branch);
+        const Type else_type = check_block(*conditional->else_branch);
+
+        if (then_type != else_type)
+        {
+            throw std::runtime_error("Both if branches must produce the same type");
+        }
+
+        return then_type;
     }
 
     if (auto *identifier = dynamic_cast<Identifier *>(&expression))
@@ -208,6 +245,7 @@ Type SemanticAnalyzer::check_expression(AST &expression)
             }
 
             case TokenKind::EqualEqual:
+            case TokenKind::BangEqual:
             {
                 if (left != right)
                 {
@@ -224,12 +262,34 @@ Type SemanticAnalyzer::check_expression(AST &expression)
 
     if (auto *unary = dynamic_cast<UnaryExpression *>(&expression))
     {
-        if (check_expression(*unary->operand) != Type::Int)
-        {
-            throw std::runtime_error("Unary arithmetic requires an integer");
-        }
+        const Type operand = check_expression(*unary->operand);
 
-        return Type::Int;
+        switch (unary->op)
+        {
+            case TokenKind::Bang:
+            {
+                if (operand != Type::Bool)
+                {
+                    throw std::runtime_error("'!' requires a boolean");
+                }
+
+                return Type::Bool;
+            }
+
+            case TokenKind::Plus:
+            case TokenKind::Minus:
+            {
+                if (operand != Type::Int)
+                {
+                    throw std::runtime_error("Unary '+' and '-' require an integer");
+                }
+
+                return Type::Int;
+            }
+
+            default:
+                throw std::runtime_error("Unsupported unary operator");
+        }
     }
 
     if (auto *call = dynamic_cast<Call *>(&expression))

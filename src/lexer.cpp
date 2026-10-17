@@ -56,6 +56,16 @@ Token Lexer::next()
             return make_token(TokenKind::Fn, start);
         }
 
+        if (word == "if")
+        {
+            return make_token(TokenKind::If, start);
+        }
+
+        if (word == "else")
+        {
+            return make_token(TokenKind::Else, start);
+        }
+
         if (word == "int")
         {
             return make_token(TokenKind::Int, start);
@@ -143,6 +153,16 @@ Token Lexer::next()
             }
 
             return make_token(TokenKind::Greater, start);
+        }
+        case '!':
+        {
+            if (!at_end() && peek() == '=')
+            {
+                advance();
+                return make_token(TokenKind::BangEqual, start);
+            }
+
+            return make_token(TokenKind::Bang, start);
         }
         case ';':
             return make_token(TokenKind::Semicolon, start);

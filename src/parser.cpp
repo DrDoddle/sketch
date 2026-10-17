@@ -15,6 +15,13 @@ Block::Block(std::vector<std::unique_ptr<AST>> stmts, std::unique_ptr<AST> expr)
 {
 }
 
+IfExpression::IfExpression(std::unique_ptr<AST> cond, std::unique_ptr<Block> then_block,
+                           std::unique_ptr<Block> else_block)
+    : condition(std::move(cond)), then_branch(std::move(then_block)),
+      else_branch(std::move(else_block))
+{
+}
+
 VariableDeclaration::VariableDeclaration(std::string n, std::optional<std::string> type,
                                          std::unique_ptr<AST> init)
     : name(std::move(n)), declared_type(std::move(type)), initializer(std::move(init))
@@ -243,6 +250,25 @@ std::unique_ptr<Block> Parser::parse_block()
     error("Expected a final value expression before '}'");
 }
 
+std::unique_ptr<IfExpression> Parser::parse_if()
+{
+    eat(TokenKind::If);
+
+    auto condition = parse_expression();
+    auto then_branch = parse_block();
+
+    if (m_current_token.kind != TokenKind::Else)
+    {
+        error("An if expression requires an else branch");
+    }
+
+    eat(TokenKind::Else);
+    auto else_branch = parse_block();
+
+    return std::make_unique<IfExpression>(
+        std::move(condition), std::move(then_branch), std::move(else_branch));
+}
+
 std::unique_ptr<VariableDeclaration> Parser::parse_variable_declaration()
 {
     std::string name(m_current_token.text);
@@ -288,7 +314,8 @@ std::unique_ptr<AST> Parser::parse_equality()
 {
     auto node = parse_comparison();
 
-    while (m_current_token.kind == TokenKind::EqualEqual)
+    while (m_current_token.kind == TokenKind::EqualEqual ||
+           m_current_token.kind == TokenKind::BangEqual)
     {
         const TokenKind op = m_current_token.kind;
         advance();
@@ -357,7 +384,8 @@ std::unique_ptr<AST> Parser::parse_multiplication()
 
 std::unique_ptr<AST> Parser::parse_unary()
 {
-    if (m_current_token.kind == TokenKind::Plus || m_current_token.kind == TokenKind::Minus)
+    if (m_current_token.kind == TokenKind::Plus || m_current_token.kind == TokenKind::Minus ||
+        m_current_token.kind == TokenKind::Bang)
     {
         const TokenKind op = m_current_token.kind;
         advance();
@@ -370,6 +398,11 @@ std::unique_ptr<AST> Parser::parse_unary()
 
 std::unique_ptr<AST> Parser::parse_primary()
 {
+    if (m_current_token.kind == TokenKind::If)
+    {
+        return parse_if();
+    }
+
     if (m_current_token.kind == TokenKind::True || m_current_token.kind == TokenKind::False)
     {
         const bool value = m_current_token.kind == TokenKind::True;
