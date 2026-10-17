@@ -84,15 +84,20 @@ void SemanticAnalyzer::check_function_variant(FunctionVariant &variant)
     }
 
     const Type expected = resolve_type(variant.return_type);
-    const Type actual = check_block(*variant.body);
+    const auto actual = check_block(*variant.body);
 
-    if (actual != expected)
+    if (!actual)
+    {
+        throw std::runtime_error("Function body must end with a value expression");
+    }
+
+    if (*actual != expected)
     {
         throw std::runtime_error("Body type does not match declared return type");
     }
 }
 
-Type SemanticAnalyzer::check_block(Block &block)
+std::optional<Type> SemanticAnalyzer::check_block(Block &block)
 {
     auto saved_scope = m_scope;
 
@@ -103,7 +108,12 @@ Type SemanticAnalyzer::check_block(Block &block)
             check_statement(*statement);
         }
 
-        const Type result = check_expression(*block.expression);
+        std::optional<Type> result;
+
+        if (block.expression)
+        {
+            result = check_expression(*block.expression);
+        }
 
         m_scope.swap(saved_scope);
         return result;
@@ -117,6 +127,11 @@ Type SemanticAnalyzer::check_block(Block &block)
 
 void SemanticAnalyzer::check_statement(AST &statement)
 {
+    if (auto *block = dynamic_cast<Block *>(&statement))
+    {
+        check_block(*block);
+        return;
+    }
     if (auto *declaration = dynamic_cast<VariableDeclaration *>(&statement))
     {
         if (m_scope.find(declaration->name) != m_scope.end())
@@ -188,15 +203,20 @@ Type SemanticAnalyzer::check_expression(AST &expression)
             throw std::runtime_error("An if condition must be a boolean");
         }
 
-        const Type then_type = check_block(*conditional->then_branch);
-        const Type else_type = check_block(*conditional->else_branch);
+        const auto then_type = check_block(*conditional->then_branch);
+        const auto else_type = check_block(*conditional->else_branch);
 
-        if (then_type != else_type)
+        if (!then_type || !else_type)
+        {
+            throw std::runtime_error("Both branches of an if expression must produce a value");
+        }
+
+        if (*then_type != *else_type)
         {
             throw std::runtime_error("Both if branches must produce the same type");
         }
 
-        return then_type;
+        return *then_type;
     }
 
     if (auto *identifier = dynamic_cast<Identifier *>(&expression))

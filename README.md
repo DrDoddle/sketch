@@ -1,3 +1,7 @@
+[![License: GPL v3](https://img.shields.io/badge/License--GPLv3-blue.svg)](LICENSE)
+[![C++20](https://img.shields.io/badge/C%2B%2B-20-blue.svg)](https://en.cppreference.com/w/cpp/20)
+[![LLVM](https://img.shields.io/badge/LLVM-Compiler-orange.svg)](https://llvm.org/)
+
 # Sketch
 
 **Sketch** is a compiler for **Doodle**, an experimental statically typed language focused on readable code, grouped function overloads, and named arguments.

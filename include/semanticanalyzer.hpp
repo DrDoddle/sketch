@@ -1,14 +1,15 @@
 #pragma once
 
-#include <parser.hpp>
+#include <optional>
+#include <unordered_map>
+
+#include "parser.hpp"
 
 enum class Type
 {
     Int,
     Bool
 };
-
-#include <unordered_map>
 
 class SemanticAnalyzer
 {
@@ -27,7 +28,7 @@ private:
 
     void check_statement(AST &statement);
 
-    Type check_block(Block &block);
+    std::optional<Type> check_block(Block &block);
 
     Type check_expression(AST &expression);
 

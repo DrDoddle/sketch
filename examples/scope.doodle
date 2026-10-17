@@ -1,0 +1,13 @@
+fn main {
+    >(): int
+    {
+        total := 5;
+
+        {
+            amount := 3;
+            total = total + amount;
+        }
+
+        total
+    };
+}

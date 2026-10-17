@@ -156,6 +156,12 @@ void CodeGenerator::emit_variant(FunctionVariant &variant)
     }
 
     auto *result = emit_block(*variant.body);
+
+    if (!result)
+    {
+        throw std::runtime_error("Missing function result during code generation");
+    }
+
     m_builder.CreateRet(result);
 }
 
@@ -180,7 +186,12 @@ llvm::Value *CodeGenerator::emit_block(Block &block)
             emit_statement(*statement);
         }
 
-        auto *result = emit_expression(*block.expression);
+        llvm::Value *result = nullptr;
+
+        if (block.expression)
+        {
+            result = emit_expression(*block.expression);
+        }
 
         m_scope.swap(saved_scope);
         return result;
@@ -227,6 +238,11 @@ llvm::Value *CodeGenerator::emit_if(IfExpression &expression)
 
     m_builder.CreateBr(merge_block);
 
+    if (!then_value || !else_value)
+    {
+        throw std::runtime_error("Missing if-expression value during code generation");
+    }
+
     if (then_value->getType() != else_value->getType())
     {
         throw std::runtime_error("Mismatched branch types during code generation");
@@ -245,6 +261,11 @@ llvm::Value *CodeGenerator::emit_if(IfExpression &expression)
 
 void CodeGenerator::emit_statement(AST &statement)
 {
+    if (auto *block = dynamic_cast<Block *>(&statement))
+    {
+        emit_block(*block);
+        return;
+    }
     if (auto *declaration = dynamic_cast<VariableDeclaration *>(&statement))
     {
         auto *value = emit_expression(*declaration->initializer);

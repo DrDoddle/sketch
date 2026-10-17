@@ -213,6 +213,12 @@ std::unique_ptr<Block> Parser::parse_block()
             error("Expected '}' before end of file");
         }
 
+        if (m_current_token.kind == TokenKind::LeftBrace)
+        {
+            statements.push_back(parse_block());
+            continue;
+        }
+
         if (m_current_token.kind == TokenKind::Identifier)
         {
             const TokenKind next = peek_kind();
@@ -247,7 +253,9 @@ std::unique_ptr<Block> Parser::parse_block()
         return std::make_unique<Block>(std::move(statements), std::move(expression));
     }
 
-    error("Expected a final value expression before '}'");
+    eat(TokenKind::RightBrace);
+
+    return std::make_unique<Block>(std::move(statements), nullptr);
 }
 
 std::unique_ptr<IfExpression> Parser::parse_if()
