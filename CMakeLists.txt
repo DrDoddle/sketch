@@ -31,6 +31,7 @@ include(GNUInstallDirs)
 set(SKETCH_SOURCES
         "${CMAKE_CURRENT_SOURCE_DIR}/src/main.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/src/lexer.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/string_literal.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/src/parser.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/src/semanticanalyzer.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/src/codegen.cpp"
@@ -165,6 +166,7 @@ set(SKETCH_FORMAT_FILES
     "${CMAKE_CURRENT_SOURCE_DIR}/include/lexer.hpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/parser.hpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/semanticanalyzer.hpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/string_literal.hpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/codegen.hpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/token.hpp"
 )

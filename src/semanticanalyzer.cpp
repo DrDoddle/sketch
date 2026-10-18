@@ -11,6 +11,10 @@ namespace
         {
             return Type::Int;
         }
+        if (name == "string")
+        {
+            return Type::String;
+        }
         if (name == "bool")
         {
             return Type::Bool;
@@ -197,6 +201,11 @@ void SemanticAnalyzer::check_statement(AST &statement)
 
 Type SemanticAnalyzer::check_expression(AST &expression)
 {
+    if (dynamic_cast<StringLiteral *>(&expression))
+    {
+        return Type::String;
+    }
+
     if (dynamic_cast<IntegerLiteral *>(&expression))
     {
         return Type::Int;

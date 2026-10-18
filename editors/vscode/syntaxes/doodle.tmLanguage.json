@@ -4,6 +4,21 @@
     "scopeName": "source.doodle",
     "patterns": [
         {
+            "name": "string.quoted.double.doodle",
+            "begin": "\"",
+            "end": "\"",
+            "patterns": [
+                {
+                    "name": "constant.character.escape.doodle",
+                    "match": "\\\\[\"\\\\nrt0]"
+                },
+                {
+                    "name": "invalid.illegal.escape.doodle",
+                    "match": "\\\\."
+                }
+            ]
+        },
+        {
             "name": "comment.line.double-slash.doodle",
             "begin": "//",
             "end": "$"
@@ -21,7 +36,7 @@
         },
         {
             "name": "storage.type.doodle",
-            "match": "\\bint\\b"
+            "match": "\\b(int|bool|string)\\b"
         },
         {
             "name": "constant.numeric.integer.doodle",
@@ -33,7 +48,7 @@
         },
         {
             "name": "variable.other.definition.doodle",
-            "match": "\\b[A-Za-z_][A-Za-z0-9_]*(?=\\s*(?::\\s*int\\s*)?:=)"
+            "match": "\\b[A-Za-z_][A-Za-z0-9_]*(?=\\s*(?::\\s*(?:int|bool|string)\\s*)?:=)"
         },
         {
             "name": "variable.parameter.doodle",

@@ -108,6 +108,13 @@ struct BooleanLiteral : public AST
     explicit BooleanLiteral(bool val);
 };
 
+struct StringLiteral : public AST
+{
+    std::string value;
+
+    explicit StringLiteral(std::string bytes);
+};
+
 struct Identifier : public AST
 {
     std::string name;

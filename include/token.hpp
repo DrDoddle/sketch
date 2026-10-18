@@ -6,10 +6,12 @@ enum class TokenKind
     End,
     Identifier,
     IntegerLiteral,
+    StringLiteral,
 
     Fn,
     Int,
     Bool,
+    String,
 
     LeftParen,
     RightParen,

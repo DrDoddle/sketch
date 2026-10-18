@@ -1,4 +1,5 @@
 #include "parser.hpp"
+#include "string_literal.hpp"
 #include <stdexcept>
 #include <utility>
 
@@ -58,6 +59,10 @@ IntegerLiteral::IntegerLiteral(int val) : value(val)
 }
 
 BooleanLiteral::BooleanLiteral(bool val) : value(val)
+{
+}
+
+StringLiteral::StringLiteral(std::string bytes) : value(std::move(bytes))
 {
 }
 
@@ -195,9 +200,10 @@ std::unique_ptr<Parameter> Parser::parse_parameter()
 
 std::string Parser::parse_type()
 {
-    if (m_current_token.kind != TokenKind::Int && m_current_token.kind != TokenKind::Bool)
+    if (m_current_token.kind != TokenKind::Int && m_current_token.kind != TokenKind::Bool &&
+        m_current_token.kind != TokenKind::String)
     {
-        error("Expected a type: int or bool");
+        error("Expected a type: int, bool, or string");
     }
     std::string name(m_current_token.text);
     advance();
@@ -223,7 +229,7 @@ std::unique_ptr<Block> Parser::parse_block()
             statements.push_back(parse_block());
             continue;
         }
-        
+
         if (m_current_token.kind == TokenKind::While)
         {
             statements.push_back(parse_while());
@@ -427,6 +433,13 @@ std::unique_ptr<AST> Parser::parse_unary()
 
 std::unique_ptr<AST> Parser::parse_primary()
 {
+    if (m_current_token.kind == TokenKind::StringLiteral)
+    {
+        auto value = decode_string_literal(m_current_token);
+        advance();
+        return std::make_unique<StringLiteral>(std::move(value));
+    }
+
     if (m_current_token.kind == TokenKind::If)
     {
         return parse_if();

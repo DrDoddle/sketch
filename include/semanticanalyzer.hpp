@@ -8,7 +8,8 @@
 enum class Type
 {
     Int,
-    Bool
+    Bool,
+    String
 };
 
 class SemanticAnalyzer

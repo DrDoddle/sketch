@@ -1,7 +1,11 @@
 #include "codegen.hpp"
 
+#include <llvm/ADT/StringRef.h>
 #include <llvm/IR/BasicBlock.h>
+#include <llvm/IR/Constants.h>
+#include <llvm/IR/DerivedTypes.h>
 #include <llvm/IR/Function.h>
+#include <llvm/IR/GlobalVariable.h>
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/Intrinsics.h>
 #include <llvm/IR/Verifier.h>
@@ -18,6 +22,10 @@
 CodeGenerator::CodeGenerator()
     : m_module(std::make_unique<llvm::Module>("doodle", m_context)), m_builder(m_context)
 {
+    m_string_type =
+        llvm::StructType::create(m_context,
+                                 {llvm::PointerType::getUnqual(m_context), m_builder.getInt64Ty()},
+                                 "doodle.string");
 }
 
 void CodeGenerator::generate(Program &program)
@@ -87,6 +95,10 @@ llvm::Type *CodeGenerator::lower_type(const std::string &type)
     if (type == "int")
     {
         return m_builder.getInt32Ty();
+    }
+    if (type == "string")
+    {
+        return m_string_type;
     }
     if (type == "bool")
     {
@@ -333,6 +345,11 @@ void CodeGenerator::emit_statement(AST &statement)
 
 llvm::Value *CodeGenerator::emit_expression(AST &expression)
 {
+    if (auto *literal = dynamic_cast<StringLiteral *>(&expression))
+    {
+        return emit_string(*literal);
+    }
+
     if (auto *conditional = dynamic_cast<IfExpression *>(&expression))
     {
         return emit_if(*conditional);
@@ -380,9 +397,17 @@ llvm::Value *CodeGenerator::emit_expression(AST &expression)
                 return emit_division(left, right);
 
             case TokenKind::BangEqual:
+                if (left->getType() == m_string_type)
+                {
+                    return m_builder.CreateNot(emit_string_equal(left, right), "netmp");
+                }
                 return m_builder.CreateICmpNE(left, right, "netmp");
 
             case TokenKind::EqualEqual:
+                if (left->getType() == m_string_type)
+                {
+                    return emit_string_equal(left, right);
+                }
                 return m_builder.CreateICmpEQ(left, right, "eqtmp");
 
             case TokenKind::Less:
@@ -489,4 +514,70 @@ llvm::Value *CodeGenerator::emit_call(Call &call)
     }
 
     return m_builder.CreateCall(function, ordered_arguments, "calltmp");
+}
+
+llvm::Value *CodeGenerator::emit_string(StringLiteral &literal)
+{
+    auto *bytes = llvm::ConstantDataArray::getString(
+        m_context, llvm::StringRef(literal.value.data(), literal.value.size()), false);
+
+    auto *global = new llvm::GlobalVariable(
+        *m_module, bytes->getType(), true, llvm::GlobalValue::PrivateLinkage, bytes, ".string");
+    global->setUnnamedAddr(llvm::GlobalValue::UnnamedAddr::Global);
+    global->setAlignment(llvm::Align(1));
+
+    llvm::Constant *indices[] = {m_builder.getInt32(0), m_builder.getInt32(0)};
+    auto *data = llvm::ConstantExpr::getInBoundsGetElementPtr(bytes->getType(), global, indices);
+    auto *length = m_builder.getInt64(static_cast<std::uint64_t>(literal.value.size()));
+
+    return llvm::ConstantStruct::get(m_string_type, {data, length});
+}
+
+llvm::Value *CodeGenerator::emit_string_equal(llvm::Value *left, llvm::Value *right)
+{
+    auto *function = m_module->getFunction("doodle.string.equal");
+
+    if (!function)
+    {
+        auto *signature =
+            llvm::FunctionType::get(m_builder.getInt1Ty(), {m_string_type, m_string_type}, false);
+        function = llvm::Function::Create(
+            signature, llvm::Function::InternalLinkage, "doodle.string.equal", *m_module);
+
+        llvm::IRBuilder<> builder(m_context);
+        auto *entry = llvm::BasicBlock::Create(m_context, "entry", function);
+        auto *check = llvm::BasicBlock::Create(m_context, "check", function);
+        auto *compare = llvm::BasicBlock::Create(m_context, "compare", function);
+        auto *equal = llvm::BasicBlock::Create(m_context, "equal", function);
+        auto *unequal = llvm::BasicBlock::Create(m_context, "unequal", function);
+
+        builder.SetInsertPoint(entry);
+        auto *left_data = builder.CreateExtractValue(function->getArg(0), {0});
+        auto *left_length = builder.CreateExtractValue(function->getArg(0), {1});
+        auto *right_data = builder.CreateExtractValue(function->getArg(1), {0});
+        auto *right_length = builder.CreateExtractValue(function->getArg(1), {1});
+        builder.CreateCondBr(builder.CreateICmpEQ(left_length, right_length), check, unequal);
+
+        builder.SetInsertPoint(check);
+        auto *index = builder.CreatePHI(builder.getInt64Ty(), 2, "index");
+        index->addIncoming(builder.getInt64(0), entry);
+        builder.CreateCondBr(builder.CreateICmpULT(index, left_length), compare, equal);
+
+        builder.SetInsertPoint(compare);
+        auto *left_address = builder.CreateInBoundsGEP(builder.getInt8Ty(), left_data, index);
+        auto *right_address = builder.CreateInBoundsGEP(builder.getInt8Ty(), right_data, index);
+        auto *left_byte = builder.CreateLoad(builder.getInt8Ty(), left_address);
+        auto *right_byte = builder.CreateLoad(builder.getInt8Ty(), right_address);
+        auto *next = builder.CreateAdd(index, builder.getInt64(1));
+        index->addIncoming(next, compare);
+        builder.CreateCondBr(builder.CreateICmpEQ(left_byte, right_byte), check, unequal);
+
+        builder.SetInsertPoint(equal);
+        builder.CreateRet(builder.getTrue());
+
+        builder.SetInsertPoint(unequal);
+        builder.CreateRet(builder.getFalse());
+    }
+
+    return m_builder.CreateCall(function, {left, right}, "stringeq");
 }

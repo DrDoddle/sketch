@@ -41,6 +41,43 @@ Token Lexer::next()
 
     const char ch = advance();
 
+    if (ch == '"')
+    {
+        while (!at_end())
+        {
+            const char current = advance();
+
+            if (current == '"')
+            {
+                return make_token(TokenKind::StringLiteral, start);
+            }
+
+            if (current == '\n' || current == '\r')
+            {
+                throw std::runtime_error("Unescaped newline in string at offset " +
+                                         std::to_string(m_position - 1));
+            }
+
+            if (current == '\\')
+            {
+                if (at_end())
+                {
+                    break;
+                }
+
+                if (peek() == '\n' || peek() == '\r')
+                {
+                    throw std::runtime_error("Newline in string escape at offset " +
+                                             std::to_string(m_position));
+                }
+
+                advance();
+            }
+        }
+
+        throw std::runtime_error("Unterminated string literal at offset " + std::to_string(start));
+    }
+
     // Identifiers and keywords.
     if (std::isalpha(static_cast<unsigned char>(ch)) || ch == '_')
     {
@@ -74,6 +111,11 @@ Token Lexer::next()
         if (word == "int")
         {
             return make_token(TokenKind::Int, start);
+        }
+
+        if (word == "string")
+        {
+            return make_token(TokenKind::String, start);
         }
 
         if (word == "bool")

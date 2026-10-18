@@ -26,11 +26,15 @@ private:
     llvm::LLVMContext m_context;
     std::unique_ptr<llvm::Module> m_module;
     llvm::IRBuilder<> m_builder;
+    llvm::StructType *m_string_type;
 
     std::unordered_map<FunctionVariant *, llvm::Function *> m_functions;
     std::unordered_map<std::string, llvm::AllocaInst *> m_scope;
 
     llvm::Type *lower_type(const std::string &type);
+
+    llvm::Value *emit_string(StringLiteral &literal);
+    llvm::Value *emit_string_equal(llvm::Value *left, llvm::Value *right);
 
     void declare_group(FunctionGroup &group);
 

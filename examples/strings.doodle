@@ -1,0 +1,18 @@
+fn identity {
+    >(message: string): string
+    {
+        message
+    };
+}
+
+fn main {
+    >(): int
+    {
+        greeting: string := "Hello, world!";
+        copied := identity(message: greeting);
+        with_null := "a\0b";
+        selected := if greeting == copied { with_null } else { "wrong" };
+
+        if selected == "a\0b" { 8 } else { 1 }
+    };
+}
