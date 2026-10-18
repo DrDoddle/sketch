@@ -7,6 +7,10 @@ namespace
 {
     Type resolve_type(const std::string &name)
     {
+        if (name == "void")
+        {
+            return Type::Void;
+        }
         if (name == "int")
         {
             return Type::Int;
@@ -90,6 +94,17 @@ void SemanticAnalyzer::check_function_variant(FunctionVariant &variant)
     const Type expected = resolve_type(variant.return_type);
     const auto actual = check_block(*variant.body);
 
+    if (expected == Type::Void)
+    {
+        if (actual)
+        {
+            throw std::runtime_error("A void function cannot produce a final value; "
+                                     "use ';' to discard it");
+        }
+
+        return;
+    }
+
     if (!actual)
     {
         throw std::runtime_error("Function body must end with a value expression");
@@ -116,7 +131,12 @@ std::optional<Type> SemanticAnalyzer::check_block(Block &block)
 
         if (block.expression)
         {
-            result = check_expression(*block.expression);
+            const Type type = check_expression(*block.expression);
+
+            if (type != Type::Void)
+            {
+                result = type;
+            }
         }
 
         m_scope.swap(saved_scope);
@@ -153,8 +173,13 @@ void SemanticAnalyzer::check_statement(AST &statement)
             throw std::runtime_error("Duplicate variable: " + declaration->name);
         }
 
-        // Check before inserting the name: a := a cannot declare itself.
         const Type actual = check_expression(*declaration->initializer);
+
+        if (actual == Type::Void)
+        {
+            throw std::runtime_error("Cannot initialize variable '" + declaration->name +
+                                     "' from a void expression");
+        }
 
         if (declaration->declared_type)
         {
@@ -286,6 +311,11 @@ Type SemanticAnalyzer::check_expression(AST &expression)
             case TokenKind::EqualEqual:
             case TokenKind::BangEqual:
             {
+                if (left == Type::Void || right == Type::Void)
+                {
+                    throw std::runtime_error("Cannot compare void expressions");
+                }
+
                 if (left != right)
                 {
                     throw std::runtime_error("Equality requires operands of the same type");
@@ -363,7 +393,15 @@ Type SemanticAnalyzer::check_call(Call &call)
 
     for (const auto &argument : call.arguments)
     {
-        arguments.emplace(argument->name, check_expression(*argument->expression));
+        const Type type = check_expression(*argument->expression);
+
+        if (type == Type::Void)
+        {
+            throw std::runtime_error("Argument '" + argument->name +
+                                     "' cannot be a void expression");
+        }
+
+        arguments.emplace(argument->name, type);
     }
 
     FunctionVariant *selected = nullptr;

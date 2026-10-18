@@ -108,6 +108,11 @@ Token Lexer::next()
             return make_token(TokenKind::Else, start);
         }
 
+        if (word == "void")
+        {
+            return make_token(TokenKind::Void, start);
+        }
+
         if (word == "int")
         {
             return make_token(TokenKind::Int, start);

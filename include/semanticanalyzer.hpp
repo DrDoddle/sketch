@@ -7,6 +7,7 @@
 
 enum class Type
 {
+    Void,
     Int,
     Bool,
     String

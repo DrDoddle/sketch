@@ -185,7 +185,7 @@ private:
 
     std::unique_ptr<Parameter> parse_parameter();
 
-    std::string parse_type();
+    std::string parse_type(bool allow_void = false);
 
     std::unique_ptr<Block> parse_block();
 

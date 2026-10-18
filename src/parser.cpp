@@ -168,7 +168,7 @@ std::unique_ptr<FunctionVariant> Parser::parse_function_variant()
     eat(TokenKind::RightParen);
     eat(TokenKind::Colon);
 
-    std::string return_type = parse_type();
+    std::string return_type = parse_type(true);
 
     auto block = parse_block();
     eat(TokenKind::Semicolon);
@@ -198,13 +198,21 @@ std::unique_ptr<Parameter> Parser::parse_parameter()
     return std::make_unique<Parameter>(name, type);
 }
 
-std::string Parser::parse_type()
+std::string Parser::parse_type(bool allow_void)
 {
-    if (m_current_token.kind != TokenKind::Int && m_current_token.kind != TokenKind::Bool &&
-        m_current_token.kind != TokenKind::String)
+    const TokenKind kind = m_current_token.kind;
+
+    const bool ordinary_type =
+        kind == TokenKind::Int || kind == TokenKind::Bool || kind == TokenKind::String;
+
+    const bool permitted_void = allow_void && kind == TokenKind::Void;
+
+    if (!ordinary_type && !permitted_void)
     {
-        error("Expected a type: int, bool, or string");
+        error(allow_void ? "Expected a type: int, bool, string, or void"
+                         : "Expected a type: int, bool, or string");
     }
+
     std::string name(m_current_token.text);
     advance();
 

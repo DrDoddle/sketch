@@ -9,6 +9,8 @@ enum class TokenKind
     StringLiteral,
 
     Fn,
+
+    Void,
     Int,
     Bool,
     String,

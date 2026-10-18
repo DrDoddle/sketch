@@ -1,11 +1,22 @@
-fn calculate {
-    >(a: int, b: int): int {
-        -(a + b) + a * b / 2
+fn noop {
+    >(): void
+    {
+        value := 5;
+    };
+}
+
+fn wrapper {
+    >(): void
+    {
+        noop()
     };
 }
 
 fn main {
-    >(): int {
-        calculate(a: 6, b: 4)
+    >(): int
+    {
+        noop();
+        wrapper();
+        0
     };
 }

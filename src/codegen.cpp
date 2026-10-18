@@ -92,6 +92,10 @@ void CodeGenerator::write_ir(const std::string &path) const
 
 llvm::Type *CodeGenerator::lower_type(const std::string &type)
 {
+    if (type == "void")
+    {
+        return m_builder.getVoidTy();
+    }
     if (type == "int")
     {
         return m_builder.getInt32Ty();
@@ -169,12 +173,19 @@ void CodeGenerator::emit_variant(FunctionVariant &variant)
 
     auto *result = emit_block(*variant.body);
 
-    if (!result)
+    if (function->getReturnType()->isVoidTy())
     {
-        throw std::runtime_error("Missing function result during code generation");
+        m_builder.CreateRetVoid();
     }
+    else
+    {
+        if (!result || result->getType()->isVoidTy())
+        {
+            throw std::runtime_error("Missing function result during code generation");
+        }
 
-    m_builder.CreateRet(result);
+        m_builder.CreateRet(result);
+    }
 }
 
 llvm::AllocaInst *CodeGenerator::create_local(const std::string &name, llvm::Type *type)
@@ -513,7 +524,9 @@ llvm::Value *CodeGenerator::emit_call(Call &call)
         ordered_arguments.push_back(values.at(parameter->name));
     }
 
-    return m_builder.CreateCall(function, ordered_arguments, "calltmp");
+    const bool returns_void = function->getReturnType()->isVoidTy();
+
+    return m_builder.CreateCall(function, ordered_arguments, returns_void ? "" : "calltmp");
 }
 
 llvm::Value *CodeGenerator::emit_string(StringLiteral &literal)
