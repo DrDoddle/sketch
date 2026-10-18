@@ -41,7 +41,8 @@ enum class TokenKind
     False,
 
     If,
-    Else
+    Else,
+    While
 };
 
 struct SourceSpan

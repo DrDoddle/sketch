@@ -15,6 +15,11 @@ Block::Block(std::vector<std::unique_ptr<AST>> stmts, std::unique_ptr<AST> expr)
 {
 }
 
+WhileStatement::WhileStatement(std::unique_ptr<AST> cond, std::unique_ptr<Block> block)
+    : condition(std::move(cond)), body(std::move(block))
+{
+}
+
 IfExpression::IfExpression(std::unique_ptr<AST> cond, std::unique_ptr<Block> then_block,
                            std::unique_ptr<Block> else_block)
     : condition(std::move(cond)), then_branch(std::move(then_block)),
@@ -218,6 +223,12 @@ std::unique_ptr<Block> Parser::parse_block()
             statements.push_back(parse_block());
             continue;
         }
+        
+        if (m_current_token.kind == TokenKind::While)
+        {
+            statements.push_back(parse_while());
+            continue;
+        }
 
         if (m_current_token.kind == TokenKind::Identifier)
         {
@@ -256,6 +267,16 @@ std::unique_ptr<Block> Parser::parse_block()
     eat(TokenKind::RightBrace);
 
     return std::make_unique<Block>(std::move(statements), nullptr);
+}
+
+std::unique_ptr<WhileStatement> Parser::parse_while()
+{
+    eat(TokenKind::While);
+
+    auto condition = parse_expression();
+    auto body = parse_block();
+
+    return std::make_unique<WhileStatement>(std::move(condition), std::move(body));
 }
 
 std::unique_ptr<IfExpression> Parser::parse_if()

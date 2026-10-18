@@ -203,6 +203,37 @@ llvm::Value *CodeGenerator::emit_block(Block &block)
     }
 }
 
+void CodeGenerator::emit_while(WhileStatement &statement)
+{
+    auto *function = m_builder.GetInsertBlock()->getParent();
+
+    auto *condition_block = llvm::BasicBlock::Create(m_context, "while.condition", function);
+
+    auto *body_block = llvm::BasicBlock::Create(m_context, "while.body", function);
+
+    auto *exit_block = llvm::BasicBlock::Create(m_context, "while.exit", function);
+
+    m_builder.CreateBr(condition_block);
+
+    m_builder.SetInsertPoint(condition_block);
+
+    auto *condition = emit_expression(*statement.condition);
+
+    if (!condition->getType()->isIntegerTy(1))
+    {
+        throw std::runtime_error("Expected boolean while condition during code generation");
+    }
+
+    m_builder.CreateCondBr(condition, body_block, exit_block);
+
+    m_builder.SetInsertPoint(body_block);
+
+    emit_block(*statement.body);
+    m_builder.CreateBr(condition_block);
+
+    m_builder.SetInsertPoint(exit_block);
+}
+
 llvm::Value *CodeGenerator::emit_if(IfExpression &expression)
 {
     auto *condition = emit_expression(*expression.condition);
@@ -264,6 +295,11 @@ void CodeGenerator::emit_statement(AST &statement)
     if (auto *block = dynamic_cast<Block *>(&statement))
     {
         emit_block(*block);
+        return;
+    }
+    if (auto *loop = dynamic_cast<WhileStatement *>(&statement))
+    {
+        emit_while(*loop);
         return;
     }
     if (auto *declaration = dynamic_cast<VariableDeclaration *>(&statement))

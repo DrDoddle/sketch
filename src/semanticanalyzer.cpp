@@ -132,6 +132,16 @@ void SemanticAnalyzer::check_statement(AST &statement)
         check_block(*block);
         return;
     }
+    if (auto *loop = dynamic_cast<WhileStatement *>(&statement))
+    {
+        if (check_expression(*loop->condition) != Type::Bool)
+        {
+            throw std::runtime_error("A while condition must be a boolean");
+        }
+
+        check_block(*loop->body);
+        return;
+    }
     if (auto *declaration = dynamic_cast<VariableDeclaration *>(&statement))
     {
         if (m_scope.find(declaration->name) != m_scope.end())

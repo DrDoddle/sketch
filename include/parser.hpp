@@ -34,6 +34,14 @@ struct Block : public AST
     Block(std::vector<std::unique_ptr<AST>> stmts, std::unique_ptr<AST> expr);
 };
 
+struct WhileStatement : public AST
+{
+    std::unique_ptr<AST> condition;
+    std::unique_ptr<Block> body;
+
+    WhileStatement(std::unique_ptr<AST> cond, std::unique_ptr<Block> block);
+};
+
 struct IfExpression : public AST
 {
     std::unique_ptr<AST> condition;
@@ -173,6 +181,8 @@ private:
     std::string parse_type();
 
     std::unique_ptr<Block> parse_block();
+
+    std::unique_ptr<WhileStatement> parse_while();
 
     std::unique_ptr<IfExpression> parse_if();
 

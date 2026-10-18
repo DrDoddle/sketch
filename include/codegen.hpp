@@ -42,6 +42,8 @@ private:
 
     llvm::Value *emit_block(Block &block);
 
+    void emit_while(WhileStatement &statement);
+
     llvm::Value *emit_if(IfExpression &expression);
 
     llvm::Value *emit_expression(AST &expression);

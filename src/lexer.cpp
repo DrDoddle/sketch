@@ -56,6 +56,11 @@ Token Lexer::next()
             return make_token(TokenKind::Fn, start);
         }
 
+        if (word == "while")
+        {
+            return make_token(TokenKind::While, start);
+        }
+
         if (word == "if")
         {
             return make_token(TokenKind::If, start);
